@@ -43,13 +43,42 @@ def get_posts():
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
 def delete_post(post_id):
-    for index, post in enumerate(POSTS):
+    if request.method == 'DELETE':
+        for index, post in enumerate(POSTS):
+            if post["id"] == post_id:
+                POSTS.pop(index)
+                return jsonify({"message": f"Post with id {post_id} "
+                                           f"has been deleted successfully."}),
+        return jsonify({"error": f"Post with id {post_id} not found."})
+
+
+@app.route('/api/posts/<int:post_id>', methods=['PUT'])
+def update_post(post_id):
+    data = request.get_json()
+    title = data.get("title")
+    content = data.get("content")
+
+    if not title or not content:
+        return jsonify({"error": "Title and content needed!"})
+
+    for post in POSTS:
         if post["id"] == post_id:
-            POSTS.pop(index)
-            return jsonify({"message": f"Post with id {post_id} has been deleted successfully."})
-    return jsonify({"Error": f"Post with id {post_id} not found."})
+            post["title"] = title
+            post["content"] = content
+            return jsonify(post)
+    return jsonify({"error": f"Post with id {post_id} not found."})
 
 
+@app.route('/api/posts/search', methods=['GET'])
+def search_post():
+    result_post = []
+    title = request.args.get("title", "")
+    content = request.args.get("content", "")
+    for post in POSTS:
+        if ((title and title.lower() in post["title"].lower())
+                or (content and content.lower() in post["content"].lower())):
+            result_post.append(post)
+    return jsonify(result_post)
 
 
 if __name__ == '__main__':
