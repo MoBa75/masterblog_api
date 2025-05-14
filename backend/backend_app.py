@@ -38,6 +38,21 @@ def get_posts():
                     }
         POSTS.append(new_post)
         return jsonify(new_post)
+
+    if request.method == 'GET':
+        sort_field = request.args.get('sort')
+        direction = request.args.get('direction', 'asc')
+
+        if sort_field:
+            if sort_field not in ['title', 'content']:
+                return jsonify({"Error": "Invalid sort field. Use 'title' or 'content'."})
+            if direction not in ['asc', 'desc']:
+                return jsonify({"Error": "Invalid direction. Use 'asc' or 'desc'."})
+
+            reverse = direction == 'desc'
+            sorted_posts = sorted(POSTS, key=lambda post: post.get(sort_field, "").lower(),
+                                  reverse=reverse)
+            return jsonify(sorted_posts)
     return jsonify(POSTS)
 
 
