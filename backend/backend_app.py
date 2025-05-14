@@ -71,14 +71,10 @@ def update_post(post_id):
 
 @app.route('/api/posts/search', methods=['GET'])
 def search_post():
-    result_post = []
     title = request.args.get("title", "")
     content = request.args.get("content", "")
-    for post in POSTS:
-        if ((title and title.lower() in post["title"].lower())
-                or (content and content.lower() in post["content"].lower())):
-            result_post.append(post)
-    return jsonify(result_post)
+    return jsonify([post for post in POSTS if ((title and title.lower() in post["title"].lower())
+                or (content and content.lower() in post["content"].lower()))])
 
 
 if __name__ == '__main__':
