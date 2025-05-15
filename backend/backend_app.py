@@ -40,10 +40,9 @@ def create_new_id():
 @app.route('/api/posts', methods=['GET', 'POST'])
 def get_posts():
     """
-    A new blog entry is created and saved using the POST method.
-    With the GET method, posts can be sorted by title, content,
-    author and date in ascending and descending order.
-    :return:
+    With the POST method, creates and saves a new blog entry from user input.
+    With the GET method, show all posts. Posts can be sorted by title, content,
+    author and date in ascending and descending order. Handles errors.
     """
     if request.method == 'POST':
         new_id = create_new_id()
@@ -89,9 +88,8 @@ def get_posts():
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
 def delete_post(post_id):
     """
-    A blog entry is deleted based on the ID.
-    :param post_id:
-    :return:
+    Deletes a blog entry based on the id, handles errors.
+    :param post_id: Id of the post to be deleted as integer
     """
     if request.method == 'DELETE':
         for index, post in enumerate(POSTS):
@@ -105,9 +103,8 @@ def delete_post(post_id):
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
 def update_post(post_id):
     """
-    The title, content, author and / or date can be updated using the PUT method.
-    :param post_id:
-    :return:
+    Updates title, content, author and / or date of a blog post based on the id, handles errors.
+    :param post_id: Id of the post to be updated as integer
     """
     data = request.get_json()
     title = data.get("title")
@@ -131,9 +128,8 @@ def update_post(post_id):
 @app.route('/api/posts/search', methods=['GET'])
 def search_post():
     """
-    Users can search for corresponding entries in the title,
+    Filters the posts based on the users search term(s) in the title,
     content, author and date areas, which are then displayed.
-    :return:
     """
     title = request.args.get("title", "")
     content = request.args.get("content", "")
