@@ -49,7 +49,9 @@ def get_posts():
         data = request.get_json()
         title = data.get("title")
         content = data.get("content")
-        author = data.get("author", "Unknown")
+        author = data.get("author")
+        if not author:
+            author = "unknown"
         date_str = data.get("date", datetime.today().strftime("%Y-%m-%d"))
         if not title or not content:
             return jsonify({"Error": "Title and content needed!"}), 400
@@ -110,6 +112,8 @@ def update_post(post_id):
     title = data.get("title")
     content = data.get("content")
     author = data.get("author")
+    if not author:
+        author = "unknown"
     date_str = data.get("date")
 
     if not title or not content:
