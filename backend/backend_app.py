@@ -1,13 +1,27 @@
-from flask import Flask, jsonify, request, redirect, url_for
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from werkzeug.utils import redirect
+from flask_swagger_ui import get_swaggerui_blueprint
+from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)  # This will enable CORS for all routes
+CORS(app)
+
+SWAGGER_URL = "/api/docs"
+API_URL = "/static/masterblog.json"
+swagger_ui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': 'Masterblog API'
+    }
+)
+app.register_blueprint(swagger_ui_blueprint, url_prefix=SWAGGER_URL)
 
 POSTS = [
-    {"id": 1, "title": "First post", "content": "This is the first post."},
-    {"id": 2, "title": "Second post", "content": "This is the second post."},
+    {"id": 1, "title": "First post", "content": "This is the first post.",
+     "author": "Admin", "date": "2023-06-01"},
+    {"id": 2, "title": "Second post", "content": "This is the second post.",
+     "author": "Editor", "date": "2023-06-02"},
 ]
 
 
@@ -19,77 +33,119 @@ def create_new_id():
     """
     id_lst = [int(post["id"]) for post in POSTS if "id" in post
               and str(post.get("id", "")).isdigit()]
-    new_id = next(num for num in range(1, len(POSTS)+2) if num not in id_lst)
+    new_id = next(num for num in range(1, len(POSTS) + 2) if num not in id_lst)
     return new_id
 
 
 @app.route('/api/posts', methods=['GET', 'POST'])
 def get_posts():
+    """
+    A new blog entry is created and saved using the POST method.
+    With the GET method, posts can be sorted by title, content,
+    author and date in ascending and descending order.
+    :return:
+    """
     if request.method == 'POST':
         new_id = create_new_id()
         data = request.get_json()
         title = data.get("title")
         content = data.get("content")
+        author = data.get("author", "Unknown")
+        date_str = data.get("date", datetime.today().strftime("%Y-%m-%d"))
         if not title or not content:
-            return jsonify({"Error": "Title and content needed!"})
+            return jsonify({"Error": "Title and content needed!"}), 400
         new_post = {"id": new_id,
                     "title": title,
-                    "content": content
+                    "content": content,
+                    "author": author,
+                    "date": date_str
                     }
         POSTS.append(new_post)
-        return jsonify(new_post)
+        return jsonify(new_post), 201
 
     if request.method == 'GET':
         sort_field = request.args.get('sort')
         direction = request.args.get('direction', 'asc')
 
         if sort_field:
-            if sort_field not in ['title', 'content']:
-                return jsonify({"Error": "Invalid sort field. Use 'title' or 'content'."})
+            if sort_field not in ['title', 'content', 'author', 'date']:
+                return jsonify({
+                    "Error": "Invalid sort field. Use 'title', "
+                             "'content', 'author' or 'date'."}), 400
             if direction not in ['asc', 'desc']:
-                return jsonify({"Error": "Invalid direction. Use 'asc' or 'desc'."})
+                return jsonify({"Error": "Invalid direction. Use 'asc' or 'desc'."}), 400
 
             reverse = direction == 'desc'
-            sorted_posts = sorted(POSTS, key=lambda post: post.get(sort_field, "").lower(),
-                                  reverse=reverse)
-            return jsonify(sorted_posts)
-    return jsonify(POSTS)
+            if sort_field == 'date':
+                sorted_posts = sorted(POSTS, key=lambda post: datetime.strptime(
+                    post.get('date', '1900-01-01'), "%Y-%m-%d"), reverse=reverse)
+            else:
+                sorted_posts = sorted(POSTS, key=lambda post: post.get(sort_field, "").lower(),
+                                      reverse=reverse)
+            return jsonify(sorted_posts), 200
+    return jsonify(POSTS), 200
 
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
 def delete_post(post_id):
+    """
+    A blog entry is deleted based on the ID.
+    :param post_id:
+    :return:
+    """
     if request.method == 'DELETE':
         for index, post in enumerate(POSTS):
             if post["id"] == post_id:
                 POSTS.pop(index)
                 return jsonify({"message": f"Post with id {post_id} "
-                                           f"has been deleted successfully."}),
-        return jsonify({"error": f"Post with id {post_id} not found."})
+                                           f"has been deleted successfully."}), 200
+        return jsonify({"Error": f"Post with id {post_id} not found."}), 404
 
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
 def update_post(post_id):
+    """
+    The title, content, author and / or date can be updated using the PUT method.
+    :param post_id:
+    :return:
+    """
     data = request.get_json()
     title = data.get("title")
     content = data.get("content")
+    author = data.get("author")
+    date_str = data.get("date")
 
     if not title or not content:
-        return jsonify({"error": "Title and content needed!"})
+        return jsonify({"Error": "Title and content needed!"}), 400
 
     for post in POSTS:
         if post["id"] == post_id:
             post["title"] = title
             post["content"] = content
-            return jsonify(post)
-    return jsonify({"error": f"Post with id {post_id} not found."})
+            post["author"] = author
+            post["date"] = date_str
+            return jsonify(post), 200
+    return jsonify({"Error": f"Post with id {post_id} not found."}), 404
 
 
 @app.route('/api/posts/search', methods=['GET'])
 def search_post():
+    """
+    Users can search for corresponding entries in the title,
+    content, author and date areas, which are then displayed.
+    :return:
+    """
     title = request.args.get("title", "")
     content = request.args.get("content", "")
-    return jsonify([post for post in POSTS if ((title and title.lower() in post["title"].lower())
-                or (content and content.lower() in post["content"].lower()))])
+    author = request.args.get("author", "")
+    date = request.args.get("date", "")
+    return jsonify([
+        post for post in POSTS
+        if ((title and title.lower() in post["title"].lower())
+            or (content and content.lower() in post["content"].lower())
+            or (author and author.lower() in post["author"].lower())
+            or (date and date.lower() in post["date"].lower()))
+    ]), 200
 
 
 if __name__ == '__main__':
