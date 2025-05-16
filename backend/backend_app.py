@@ -37,6 +37,24 @@ def create_new_id():
     return new_id
 
 
+def is_valid_date(date_str):
+    """
+    Validates if a date string is in the correct YYYY-MM-DD format,
+    and checks for valid and positive year, month, and day values.
+    :return: True if date is valid, else False
+    """
+    try:
+        year, month, day = map(int, date_str.split('-'))
+        if not (1 <= month <= 12 and 1 <= day <= 31 and year >= 0):
+            return False
+        date_str = datetime(year, month, day)
+        if date_str.date() > datetime.today().date():
+            return False
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
 @app.route('/api/posts', methods=['GET', 'POST'])
 def get_posts():
     """
@@ -49,12 +67,20 @@ def get_posts():
         data = request.get_json()
         title = data.get("title")
         content = data.get("content")
-        author = data.get("author")
-        if not author:
-            author = "unknown"
+        author = data.get("author") or "unknown"
         date_str = data.get("date", datetime.today().strftime("%Y-%m-%d"))
+
         if not title or not content:
             return jsonify({"Error": "Title and content needed!"}), 400
+
+        if date_str:
+            date_str = date_str.strip()
+        if not date_str:
+            date_str = datetime.today().strftime("%Y-%m-%d")
+        else:
+            if not is_valid_date(date_str):
+                return jsonify({"Error": "Invalid date format or values. Use YYYY-MM-DD."}), 400
+
         new_post = {"id": new_id,
                     "title": title,
                     "content": content,
@@ -111,13 +137,19 @@ def update_post(post_id):
     data = request.get_json()
     title = data.get("title")
     content = data.get("content")
-    author = data.get("author")
-    if not author:
-        author = "unknown"
+    author = data.get("author") or "unknown"
     date_str = data.get("date")
 
     if not title or not content:
         return jsonify({"Error": "Title and content needed!"}), 400
+
+    if date_str:
+        date_str = date_str.strip()
+    if not date_str:
+        date_str = datetime.today().strftime("%Y-%m-%d")
+    else:
+        if not is_valid_date(date_str):
+            return jsonify({"Error": "Invalid date format or values. Use YYYY-MM-DD."}), 400
 
     for post in POSTS:
         if post["id"] == post_id:
